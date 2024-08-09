@@ -1,3 +1,4 @@
+import { json } from '@sveltejs/kit';
 import fs from 'fs';
 import path from 'path';
 import sqlite3 from 'sqlite3';
@@ -5,8 +6,7 @@ import sqlite3 from 'sqlite3';
 const dbFilePath = `./../store`
 const dbName = `files`
 
-
-export async function load() {
+export async function GET() {
     // Open the database
     const db = new sqlite3.Database(path.join(dbFilePath, dbName), (err) => {
         if (err) {
@@ -47,27 +47,35 @@ export async function load() {
         }
     });
 
-    // Fetch image data
-    const imageData = await Promise.all(paths.map(async (path) => {
-        const filePath = path;
-        try {
-            const imageBuffer = fs.readFileSync(filePath);
-            const base64Image = imageBuffer.toString('base64');
-            console.log(base64Image.length);
-
-            return `data:image/jpeg;base64,${base64Image}`; // Adjust the MIME type as needed
-        } catch (error) {
-            console.error('Error reading image file:', error);
-            return null; // Return null if there's an error
-        }
-    }));
+    var buffer: Buffer
+    var blob = new Blob()
+    await readFileAsBlob(paths[0])
+    .then(data => {
+        buffer = data;
+        blob = new Blob([buffer]);
+    })
+    .catch(err => {
+        console.error('Error reading file:', err);
+    });
     
-    // Filter out any null values (in case of errors)
-    const validImageData = imageData.filter((data) => data !== null);
-    return {
-        summaries: validImageData.map((data, index) => ({
-            path: paths[index], // Keep the original path if needed
-            imageData: data,
-        }))
-    };
+    
+    var formData = new FormData
+    formData.append("file_name", paths[0])
+    formData.append("file_blob", blob)
+
+    await new Promise((fulfil) => setTimeout(fulfil, 1000));
+
+    return new Response(formData, {status: 201})
+}
+
+function readFileAsBlob(filePath: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
 }
