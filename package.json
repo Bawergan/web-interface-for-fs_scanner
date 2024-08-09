@@ -36,6 +36,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"sharp": "^0.33.4",
 		"sqlite3": "^5.1.7"
 	}
 }

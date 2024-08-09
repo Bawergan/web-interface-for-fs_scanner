@@ -19,14 +19,14 @@
 		if (fileIds == null) {
 			return files;
 		}
-		fileIds.map((id) => {
-			const fileNames = data.get(id + 'file_name') as string;
-			const fileBlobs = data.get(id + 'file_blob') as Blob;
+		fileIds.map((fileId) => {
+			const fileNames = data.get(fileId + 'file_name') as string;
+			const fileBlobs = data.get(fileId + 'file_blob') as Blob;
 			const file: File = { name: fileNames, blob: fileBlobs, imageUrl: '' };
 			files.push(file);
 
-			if ((id as unknown as number) > maxId) {
-				maxId = id as unknown as number;
+			if ((fileId as unknown as number) > maxId) {
+				maxId = fileId as unknown as number;
 			}
 		});
 
@@ -43,22 +43,27 @@
 		return files;
 	}
 	function updateId(n: number) {
-		id = +maxId + +n;
+		if (id == -1) {
+			id = +maxId;
+		}
+		id += +n;
 	}
 
 	var maxId = 0;
 	var id = -1;
+
+	$: filesP = getFiles(id);
 </script>
 
 <h1>Welcome</h1>
-{#await getFiles(id)}
+{#await filesP}
 	<h1>loading file</h1>
 {:then files}
 	{#each files as file}
 		<FileContainer {...file} />
 	{/each}
 {/await}
-
+<p>{id}; {maxId}</p>
 <button on:click={() => updateId(-1)}>Prev</button>
 <button on:click={() => updateId(1)}>Next</button>
 
