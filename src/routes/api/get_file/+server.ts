@@ -1,10 +1,6 @@
-import fs from 'fs';
-import path from 'path';
+import { getDatabase, dbName } from '$lib/db.js';
 import sharp from 'sharp';
-import sqlite3 from 'sqlite3';
 
-const dbFilePath = `./../store`
-const dbName = `files`
 type Row = {
     id: number
     name: string
@@ -22,13 +18,7 @@ export async function POST(req) {
 
 async function getPathsFromDb(id: number) {
     // Open the database
-    const db = new sqlite3.Database(path.join(dbFilePath, dbName), (err) => {
-        if (err) {
-            console.error(err.message);
-        } else {
-            console.log('Connected to the database.');
-        }
-    });
+    const db = getDatabase()
 
     const paths: Row[] = [];
     const maxFiles = 4
@@ -49,15 +39,6 @@ async function getPathsFromDb(id: number) {
             });
         });
     });
-
-    // Close the database connection
-    db.close((err) => {
-        if (err) {
-            console.error(err.message);
-        } else {
-            console.log('Closed the database connection.');
-        }
-    });
     return paths
 }
 
@@ -74,7 +55,7 @@ async function assembleFormData(paths: Row[]) {
             console.error('Error reading file:', err);
         }
     });
-    
+
     await Promise.all(promises);
 
     return formData
