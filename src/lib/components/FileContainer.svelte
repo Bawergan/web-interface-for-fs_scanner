@@ -6,7 +6,7 @@
 {#if imageUrl}
 	<div class="image-container">
 		<!-- svelte-ignore a11y_missing_attribute -->
-		<img src={imageUrl} class="responsive-image" />
+		<img src={imageUrl} class="responsive-image" alt="image content. {name}"/>
 		<p class="image-caption">{name}</p>
 	</div>
 {:else}

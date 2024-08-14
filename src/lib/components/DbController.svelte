@@ -7,7 +7,7 @@
 
 </script>
 
-<button onclick={callDbForUpdate}><RefreshCcw /></button>
+<button onclick={callDbForUpdate} title="reload DataBase"><RefreshCcw /></button>
 
 <style>
 	button {
