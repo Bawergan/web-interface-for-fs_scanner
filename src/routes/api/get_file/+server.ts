@@ -6,6 +6,8 @@ import fs from 'fs';
 type Row = {
 	id: number;
 	name: string;
+	created_at: Date;
+	tags: string[];
 };
 type DbStats = {
 	maxId: number;
@@ -86,6 +88,7 @@ async function assembleFormData(paths: Row[]) {
 
 	const promises = paths.map(async (row) => {
 		try {
+			console.log(row.created_at)
 			const fileFormat = path.extname(row.name);
 			const data = await provideBlob(row.name, fileFormat);
 			formData.append('file_id', row.id.toString());
@@ -113,7 +116,11 @@ function provideBlob(filePath: string, fileFormat: string): Promise<Buffer> {
 }
 
 function sharpImage(filePath: string): Promise<Buffer> {
-	return sharp(filePath).resize(200).webp({ quality: 80 }).toFormat(sharp.format.webp).toBuffer();
+	return sharp(filePath)
+		.resize(80)
+		.webp({ quality: 80 })
+		.toFormat(sharp.format.webp)
+		.toBuffer();
 }
 
 async function readFile(filePath: string): Promise<Buffer> {

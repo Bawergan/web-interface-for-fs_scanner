@@ -5,7 +5,8 @@
 	import { onMount } from 'svelte';
 
 	let filesVal: Promise<FileCustom[]> = Promise.resolve([]);
-	let batchSize = 4;
+	let batchSize = 10;
+	
 	onMount(async () => {
 		await getDbStat();
 		files.init(batchSize);
