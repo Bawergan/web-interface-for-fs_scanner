@@ -82,11 +82,17 @@ var minId = 0;
 var maxId = 0;
 
 async function getNextBatch() {
+	if ((page + 1) * batchSize + +minId > maxId) {
+		return filePromises[1];
+	}
 	page += 1;
 
 	filePromises[0] = filePromises[1];
 	filePromises[1] = filePromises[2];
-	filePromises[2] = getFiles((page + 1) * batchSize + +minId, batchSize);
+
+	if ((page + 1) * batchSize + +minId < maxId) {
+		filePromises[2] = getFiles((page + 1) * batchSize + +minId, batchSize);
+	}
 
 	return filePromises[1];
 }
