@@ -7,6 +7,9 @@ export type FileCustom = {
 	blob: Blob;
 	imageUrl: string;
 };
+export type DbSettings = {
+	batchSize: number;
+};
 
 async function fetchMessage(id: number, count: number) {
 	const response = await fetch('/api/get_file', {
@@ -75,8 +78,13 @@ export async function getDbStat() {
 	}
 }
 
+var batchSize = 0;
+export const dbSettings = writable({ batchSize: 10 } as DbSettings);
+dbSettings.subscribe((v) => {
+	batchSize = v.batchSize;
+});
+
 let filePromises: Promise<FileCustom[]>[] = Array(3).fill(Promise.resolve([]));
-let batchSize = 5;
 let page = 0;
 var minId = 0;
 var maxId = 0;
@@ -131,7 +139,8 @@ function createFiles() {
 			set(getPrevBatch());
 		},
 		init: async (newBatchSize: number) => {
-			batchSize = newBatchSize;
+			dbSettings.set({ batchSize: newBatchSize });
+
 			set(setFiles());
 		}
 	};

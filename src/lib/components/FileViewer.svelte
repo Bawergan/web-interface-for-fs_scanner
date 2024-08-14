@@ -1,17 +1,20 @@
 <script lang="ts">
 	import FileContainer from '$lib/components/FileContainer.svelte';
 	import type { FileCustom } from '$lib/fileStore';
-	import { files, getDbStat } from '$lib/fileStore';
+	import { files, getDbStat, dbSettings } from '$lib/fileStore';
 	import { onMount } from 'svelte';
 
 	let filesVal: Promise<FileCustom[]> = Promise.resolve([]);
 	let batchSize = 10;
-	
+
 	onMount(async () => {
 		await getDbStat();
 		files.init(batchSize);
 		files.subscribe((v) => {
 			filesVal = v as Promise<FileCustom[]>;
+		});
+		dbSettings.subscribe((v) => {
+			batchSize = v.batchSize;
 		});
 	});
 </script>
@@ -22,11 +25,17 @@
 		<FileContainer name={null} imageUrl={null} />
 	{/each}
 {:then f}
-	{@const empties = Array(batchSize - f.length)}
+	{@const empties = () => {
+		if (batchSize >= f.length) {
+			return Array(batchSize - f.length);
+		} else {
+			return Array(0);
+		}
+	}}
 	{#each f as file}
 		<FileContainer {...file} />
 	{/each}
-	{#each empties as e}
+	{#each empties() as _}
 		<FileContainer name={null} imageUrl={null} />
 	{/each}
 {/await}
