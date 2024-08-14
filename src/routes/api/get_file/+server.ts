@@ -88,7 +88,6 @@ async function assembleFormData(paths: Row[]) {
 
 	const promises = paths.map(async (row) => {
 		try {
-			console.log(row.created_at)
 			const fileFormat = path.extname(row.name);
 			const data = await provideBlob(row.name, fileFormat);
 			formData.append('file_id', row.id.toString());
