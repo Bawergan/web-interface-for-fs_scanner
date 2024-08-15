@@ -30,6 +30,7 @@
 		font-size: 14px;
 		color: #555;
 		margin: 0; /* Remove default margin */
+		max-height: 40;
 	}
 
 	.image-placeholder {
