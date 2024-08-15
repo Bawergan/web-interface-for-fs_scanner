@@ -2,6 +2,7 @@ import { getDatabase, dbName } from '$lib/db.js';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
+import { FORMATS_FOR_SHARP } from '$lib';
 
 type Row = {
 	id: number;
@@ -93,7 +94,7 @@ async function assembleFormData(paths: Row[]) {
 			formData.append('file_id', row.id.toString());
 			formData.append(row.id.toString() + 'file_name', row.name);
 			formData.append(row.id.toString() + 'file_blob', new Blob([data]));
-			formData.append(row.id.toString + 'file_format', fileFormat);
+			formData.append(row.id.toString() + 'file_format', fileFormat);
 		} catch (err) {
 			console.error('Error reading file:', err);
 		}
@@ -105,8 +106,6 @@ async function assembleFormData(paths: Row[]) {
 }
 
 function provideBlob(filePath: string, fileFormat: string): Promise<Buffer> {
-	const FORMATS_FOR_SHARP = ['.jpeg', '.png', '.webp', '.avif', '.gif', '.svg', '.tiff'];
-
 	if (FORMATS_FOR_SHARP.includes(fileFormat)) {
 		return sharpImage(filePath);
 	} else {
@@ -115,11 +114,7 @@ function provideBlob(filePath: string, fileFormat: string): Promise<Buffer> {
 }
 
 function sharpImage(filePath: string): Promise<Buffer> {
-	return sharp(filePath)
-		.resize(80)
-		.webp({ quality: 80 })
-		.toFormat(sharp.format.webp)
-		.toBuffer();
+	return sharp(filePath).resize(80).webp({ quality: 80 }).toFormat(sharp.format.webp).toBuffer();
 }
 
 async function readFile(filePath: string): Promise<Buffer> {
