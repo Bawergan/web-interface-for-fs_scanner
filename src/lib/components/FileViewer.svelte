@@ -1,15 +1,14 @@
 <script lang="ts">
 	import FileContainer from '$lib/components/FileContainer.svelte';
 	import type { FileCustom } from '$lib/fileStore';
-	import { files, getDbStat, dbSettings } from '$lib/fileStore';
+	import { files, getDbStat, dbSettings, currentMinId } from '$lib/fileStore';
 	import { onMount } from 'svelte';
 
 	let filesVal: Promise<FileCustom[]> = Promise.resolve([]);
-	let batchSize = 10;
-
+	let batchSize = 0;
 	onMount(async () => {
 		await getDbStat();
-		files.init(batchSize);
+		files.init();
 		files.subscribe((v) => {
 			filesVal = v as Promise<FileCustom[]>;
 		});
@@ -25,6 +24,7 @@
 		<FileContainer name={null} imageUrl={null} />
 	{/each}
 {:then f}
+	{currentMinId.set(f.length > 0 ? Math.min(...f.map((file) => file.id)) : 0)}
 	{@const empties = () => {
 		if (batchSize >= f.length) {
 			return Array(batchSize - f.length);

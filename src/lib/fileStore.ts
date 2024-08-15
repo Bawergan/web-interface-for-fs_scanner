@@ -1,3 +1,4 @@
+import { FORMATS_FOR_SHARP } from '$lib';
 import { writable } from 'svelte/store';
 
 export type FileCustom = {
@@ -10,8 +11,7 @@ export type FileCustom = {
 export type DbSettings = {
 	batchSize: number;
 };
-
-async function fetchMessage(id: number, count: number) {
+async function getFiles(id: number, count: number) {
 	const response = await fetch('/api/get_file', {
 		method: 'POST',
 		body: JSON.stringify({ id, count })
@@ -38,19 +38,10 @@ async function fetchMessage(id: number, count: number) {
 			format: format,
 			imageUrl: ''
 		};
-		files.push(file);
-	});
-
-	return files;
-}
-
-export async function getFiles(id: number, count: number) {
-	const files = (await fetchMessage(id, count)) as FileCustom[];
-
-	files.forEach((file) => {
-		if (file.blob) {
-			file.imageUrl = URL.createObjectURL(file.blob);
+		if (FORMATS_FOR_SHARP.includes(format) && blob) {
+			file.imageUrl = URL.createObjectURL(blob);
 		}
+		files.push(file);
 	});
 
 	return files;
@@ -77,20 +68,32 @@ export async function getDbStat() {
 		maxId = sMaxId as unknown as number;
 	}
 }
+var currentMinIdSub = 0;
+export const currentMinId = writable(0);
+currentMinId.subscribe((v) => {
+	currentMinIdSub = v;
+});
 
 var batchSize = 0;
+var isInited = false;
 export const dbSettings = writable({ batchSize: 10 } as DbSettings);
 dbSettings.subscribe((v) => {
 	batchSize = v.batchSize;
+	if (isInited) {
+		startingPoint = currentMinIdSub;
+		filePromises[0] = getFiles((page - 1) * batchSize + +startingPoint, batchSize);
+		filePromises[2] = getFiles((page + 1) * batchSize + +startingPoint, batchSize);
+	}
 });
 
 let filePromises: Promise<FileCustom[]>[] = Array(3).fill(Promise.resolve([]));
 let page = 0;
 var minId = 0;
 var maxId = 0;
+var startingPoint = 0;
 
 async function getNextBatch() {
-	if ((page + 1) * batchSize + +minId > maxId) {
+	if ((page + 1) * batchSize + +startingPoint > maxId) {
 		return filePromises[1];
 	}
 	page += 1;
@@ -98,38 +101,43 @@ async function getNextBatch() {
 	filePromises[0] = filePromises[1];
 	filePromises[1] = filePromises[2];
 
-	if ((page + 1) * batchSize + +minId < maxId) {
-		filePromises[2] = getFiles((page + 1) * batchSize + +minId, batchSize);
+	if ((page + 1) * batchSize + +startingPoint < maxId) {
+		filePromises[2] = getFiles((page + 1) * batchSize + +startingPoint, batchSize);
 	}
 
 	return filePromises[1];
 }
 
 async function getPrevBatch() {
-	if (page <= 0) {
+	if ((page - 1) * batchSize + +startingPoint < minId) {
 		return filePromises[1];
 	}
 	page -= 1;
 
 	filePromises[2] = filePromises[1];
 	filePromises[1] = filePromises[0];
-	filePromises[0] = getFiles((page - 1) * batchSize + +minId, batchSize);
+	
+	if ((page - 1) * batchSize + +startingPoint >= minId) {
+		filePromises[0] = getFiles((page - 1) * batchSize + +startingPoint, batchSize);
+	}
 
 	return filePromises[1];
 }
 
 async function setFiles() {
+	isInited = true;
+	startingPoint = minId;
+
 	page = 0;
 
-	filePromises[1] = getFiles(page * batchSize + +minId, batchSize);
-	filePromises[2] = getFiles((page + 1) * batchSize + +minId, batchSize);
+	filePromises[1] = getFiles(page * batchSize + +startingPoint, batchSize);
+	filePromises[2] = getFiles((page + 1) * batchSize + +startingPoint, batchSize);
 
 	return filePromises[1];
 }
 
 function createFiles() {
 	const { subscribe, set } = writable();
-
 	return {
 		subscribe,
 		next: async () => {
@@ -138,9 +146,7 @@ function createFiles() {
 		prev: async () => {
 			set(getPrevBatch());
 		},
-		init: async (newBatchSize: number) => {
-			dbSettings.set({ batchSize: newBatchSize });
-
+		init: async () => {
 			set(setFiles());
 		}
 	};

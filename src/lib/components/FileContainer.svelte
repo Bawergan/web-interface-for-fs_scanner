@@ -9,8 +9,7 @@
 		<p class="image-caption">{name}</p>
 	</div>
 {:else}
-	<div class="image-placeholder">
-	</div>
+	<div class="image-placeholder">{name}</div>
 {/if}
 
 <style>
