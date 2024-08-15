@@ -3,10 +3,13 @@ import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
 import { FORMATS_FOR_SHARP } from '$lib';
+import type { DbSettings } from '$lib/fileStore.js';
+import { Settings } from 'lucide-svelte';
 
 type Row = {
 	id: number;
 	name: string;
+	format: string;
 	created_at: Date;
 	tags: string[];
 };
@@ -16,10 +19,11 @@ type DbStats = {
 };
 export async function POST(req) {
 	const reqJson = await req.request.json();
+	console.log(reqJson);
 	const id = reqJson.id as number;
-	const count = reqJson.count as number;
+	const settings = reqJson.settings as DbSettings;
 
-	if (count == 0) {
+	if (settings.batchSize == 0) {
 		const dbData = await getDataFromDb();
 
 		const formData = new FormData();
@@ -29,7 +33,7 @@ export async function POST(req) {
 		return new Response(formData, { status: 201 });
 	}
 
-	const paths = await getPathsFromDb(id, count);
+	const paths = await getPathsFromDb(id, settings);
 
 	const formData = await assembleFormData(paths);
 
@@ -55,16 +59,20 @@ async function getDataFromDb() {
 	return stats;
 }
 
-async function getPathsFromDb(id: number, count: number) {
+async function getPathsFromDb(id: number, settings: DbSettings) {
 	// Open the database
 	const db = getDatabase();
+	let q = '';
+	if (FORMATS_FOR_SHARP.includes(settings.format)) {
+		q = 'AND format = "' + settings.format + '"';
+	}
 
 	const paths: Row[] = [];
 	// Query the database
 	await new Promise<void>((resolve, reject) => {
 		db.serialize(() => {
 			db.each(
-				`SELECT * FROM ${dbName} WHERE id >= ${id} LIMIT ${count};`,
+				`SELECT * FROM ${dbName} WHERE id >= ${id} ${q} LIMIT ${settings.batchSize};`,
 				(err, row) => {
 					if (err) {
 						console.error(err.message);
@@ -89,12 +97,11 @@ async function assembleFormData(paths: Row[]) {
 
 	const promises = paths.map(async (row) => {
 		try {
-			const fileFormat = path.extname(row.name);
-			const data = await provideBlob(row.name, fileFormat);
+			const data = await provideBlob(row.name, row.format);
 			formData.append('file_id', row.id.toString());
 			formData.append(row.id.toString() + 'file_name', row.name);
+			formData.append(row.id.toString() + 'file_format', row.format);
 			formData.append(row.id.toString() + 'file_blob', new Blob([data]));
-			formData.append(row.id.toString() + 'file_format', fileFormat);
 		} catch (err) {
 			console.error('Error reading file:', err);
 		}

@@ -10,11 +10,12 @@ export type FileCustom = {
 };
 export type DbSettings = {
 	batchSize: number;
+	format: string;
 };
-async function getFiles(id: number, count: number) {
+async function getFiles(id: number, settings: DbSettings) {
 	const response = await fetch('/api/get_file', {
 		method: 'POST',
-		body: JSON.stringify({ id, count })
+		body: JSON.stringify({ id, settings })
 	});
 
 	const data = await response.formData();
@@ -49,11 +50,10 @@ async function getFiles(id: number, count: number) {
 
 export async function getDbStat() {
 	const id = -1;
-	const count = 0;
-
+	const settings = { batchSize: 0, format: '' };
 	const response = await fetch('/api/get_file', {
 		method: 'POST',
-		body: JSON.stringify({ id, count })
+		body: JSON.stringify({ id, settings })
 	});
 
 	const data = await response.formData();
@@ -74,15 +74,15 @@ currentMinId.subscribe((v) => {
 	currentMinIdSub = v;
 });
 
-var batchSize = 0;
+var dbSettingsSub: DbSettings = { batchSize: 0, format: '' };
 var isInited = false;
 export const dbSettings = writable({ batchSize: 10 } as DbSettings);
 dbSettings.subscribe((v) => {
-	batchSize = v.batchSize;
+	dbSettingsSub = v;
 	if (isInited) {
 		startingPoint = currentMinIdSub;
-		filePromises[0] = getFiles((page - 1) * batchSize + +startingPoint, batchSize);
-		filePromises[2] = getFiles((page + 1) * batchSize + +startingPoint, batchSize);
+		filePromises[0] = getFiles((page - 1) * v.batchSize + +startingPoint, v);
+		filePromises[2] = getFiles((page + 1) * v.batchSize + +startingPoint, v);
 	}
 });
 
@@ -93,32 +93,38 @@ var maxId = 0;
 var startingPoint = 0;
 
 async function getNextBatch() {
-	if ((page + 1) * batchSize + +startingPoint > maxId) {
+	if ((page + 1) * dbSettingsSub.batchSize + +startingPoint > maxId) {
+		console.log(maxId);
 		return filePromises[1];
 	}
 	page += 1;
-
 	filePromises[0] = filePromises[1];
 	filePromises[1] = filePromises[2];
 
-	if ((page + 1) * batchSize + +startingPoint < maxId) {
-		filePromises[2] = getFiles((page + 1) * batchSize + +startingPoint, batchSize);
+	if ((page + 1) * dbSettingsSub.batchSize + +startingPoint < maxId) {
+		filePromises[2] = getFiles(
+			(page + 1) * dbSettingsSub.batchSize + +startingPoint,
+			dbSettingsSub
+		);
 	}
 
 	return filePromises[1];
 }
 
 async function getPrevBatch() {
-	if ((page - 1) * batchSize + +startingPoint < minId) {
+	if ((page - 1) * dbSettingsSub.batchSize + +startingPoint < minId) {
 		return filePromises[1];
 	}
 	page -= 1;
 
 	filePromises[2] = filePromises[1];
 	filePromises[1] = filePromises[0];
-	
-	if ((page - 1) * batchSize + +startingPoint >= minId) {
-		filePromises[0] = getFiles((page - 1) * batchSize + +startingPoint, batchSize);
+
+	if ((page - 1) * dbSettingsSub.batchSize + +startingPoint >= minId) {
+		filePromises[0] = getFiles(
+			(page - 1) * dbSettingsSub.batchSize + +startingPoint,
+			dbSettingsSub
+		);
 	}
 
 	return filePromises[1];
@@ -130,8 +136,8 @@ async function setFiles() {
 
 	page = 0;
 
-	filePromises[1] = getFiles(page * batchSize + +startingPoint, batchSize);
-	filePromises[2] = getFiles((page + 1) * batchSize + +startingPoint, batchSize);
+	filePromises[1] = getFiles(page * dbSettingsSub.batchSize + +startingPoint, dbSettingsSub);
+	filePromises[2] = getFiles((page + 1) * dbSettingsSub.batchSize + +startingPoint, dbSettingsSub);
 
 	return filePromises[1];
 }
